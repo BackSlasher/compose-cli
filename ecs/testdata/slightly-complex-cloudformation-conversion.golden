@@ -13,16 +13,6 @@ Resources:
       - Key: com.docker.compose.project
         Value: TestSlightlyComplexConvert
     Type: AWS::ECS::Cluster
-  Default80Ingress:
-    Properties:
-      CidrIp: 0.0.0.0/0
-      Description: entrance:80/tcp on default network
-      FromPort: 80
-      GroupId:
-        Ref: DefaultNetwork
-      IpProtocol: TCP
-      ToPort: 80
-    Type: AWS::EC2::SecurityGroupIngress
   DefaultNetwork:
     Properties:
       GroupDescription: TestSlightlyComplexConvert Security Group for default network
@@ -67,6 +57,7 @@ Resources:
           AssignPublicIp: ENABLED
           SecurityGroups:
           - Ref: DefaultNetwork
+          - Ref: EntranceServiceIngressSecurityGroup
           Subnets:
           - subnet1
           - subnet2
@@ -100,6 +91,27 @@ Resources:
       NamespaceId:
         Ref: CloudMap
     Type: AWS::ServiceDiscovery::Service
+  EntranceServiceIngressSecurityGroup:
+    Properties:
+      GroupDescription: TestSlightlyComplexConvert Security Group for service entrance
+        ingress
+      Tags:
+      - Key: com.docker.compose.project
+        Value: TestSlightlyComplexConvert
+      - Key: com.docker.compose.service
+        Value: entrance
+      VpcId: vpc-123
+    Type: AWS::EC2::SecurityGroup
+  EntranceServiceIngressSecurityGroup80Ingress:
+    Properties:
+      CidrIp: 0.0.0.0/0
+      Description: entrance:80/tcp on EntranceServiceIngressSecurityGroup network
+      FromPort: 80
+      GroupId:
+        Ref: EntranceServiceIngressSecurityGroup
+      IpProtocol: TCP
+      ToPort: 80
+    Type: AWS::EC2::SecurityGroupIngress
   EntranceTCP80Listener:
     Properties:
       DefaultActions:

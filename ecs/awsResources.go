@@ -51,6 +51,10 @@ func (r *awsResources) serviceSecurityGroups(service types.ServiceConfig) []stri
 	for net := range service.Networks {
 		groups = append(groups, r.securityGroups[net])
 	}
+	// TODO add the ingress secgroup
+	if len(service.Ports) > 0 {
+		groups = append(groups, r.securityGroups[serviceIngressSecGroupName(service.Name)])
+	}
 	return groups
 }
 
@@ -330,6 +334,7 @@ func (b *ecsAPIService) ensureCluster(r *awsResources, project *types.Project, t
 
 func (b *ecsAPIService) ensureNetworks(r *awsResources, project *types.Project, template *cloudformation.Template) {
 	if r.securityGroups == nil {
+		// TODO NITZ change the size hint?
 		r.securityGroups = make(map[string]string, len(project.Networks))
 	}
 	for name, net := range project.Networks {
@@ -352,6 +357,19 @@ func (b *ecsAPIService) ensureNetworks(r *awsResources, project *types.Project, 
 		}
 
 		r.securityGroups[name] = cloudformation.Ref(securityGroup)
+	}
+
+	for _, service := range project.Services {
+		if len(service.Ports) == 0 {
+			continue
+		}
+		securityGroup := serviceIngressSecGroupName(service.Name)
+		template.Resources[securityGroup] = &ec2.SecurityGroup{
+			GroupDescription: fmt.Sprintf("%s Security Group for service %s ingress", project.Name, service.Name),
+			VpcId:            r.vpc,
+			Tags:             serviceTags(project, service),
+		}
+		r.securityGroups[securityGroup] = cloudformation.Ref(securityGroup)
 	}
 }
 

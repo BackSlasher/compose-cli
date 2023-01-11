@@ -197,11 +197,10 @@ func (b *ecsAPIService) createService(project *types.Project, service types.Serv
 		dependsOn []string
 		serviceLB []ecs.Service_LoadBalancer
 	)
-	for _, port := range service.Ports {
-		for net := range service.Networks {
-			b.createIngress(service, net, port, template, resources)
-		}
 
+	for _, port := range service.Ports {
+		securityGroupName := serviceIngressSecGroupName(service.Name)
+		b.createIngress(service, securityGroupName, port, template, resources)
 		protocol := strings.ToUpper(port.Protocol)
 		if resources.loadBalancerType == elbv2.LoadBalancerTypeEnumApplication {
 			// we don't set Https as a certificate must be specified for HTTPS listeners
@@ -532,6 +531,10 @@ func (b *ecsAPIService) createPolicies(project *types.Project, service types.Ser
 
 func networkResourceName(network string) string {
 	return fmt.Sprintf("%sNetwork", normalizeResourceName(network))
+}
+
+func serviceIngressSecGroupName(service string) string {
+	return fmt.Sprintf("%sServiceIngressSecurityGroup", normalizeResourceName(service))
 }
 
 func serviceResourceName(service string) string {
