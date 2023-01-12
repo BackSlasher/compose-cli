@@ -37,6 +37,7 @@ Resources:
       Scheme: internet-facing
       SecurityGroups:
       - Ref: DefaultNetwork
+      - Ref: SimpleServiceIngressSecurityGroup
       Subnets:
       - subnet1
       - subnet2
@@ -74,7 +75,6 @@ Resources:
           AssignPublicIp: ENABLED
           SecurityGroups:
           - Ref: DefaultNetwork
-          - Ref: SimpleServiceIngressSecurityGroup
           Subnets:
           - subnet1
           - subnet2

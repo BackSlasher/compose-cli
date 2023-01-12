@@ -51,10 +51,6 @@ func (r *awsResources) serviceSecurityGroups(service types.ServiceConfig) []stri
 	for net := range service.Networks {
 		groups = append(groups, r.securityGroups[net])
 	}
-	// TODO add the ingress secgroup
-	if len(service.Ports) > 0 {
-		groups = append(groups, r.securityGroups[serviceIngressSecGroupName(service.Name)])
-	}
 	return groups
 }
 
@@ -466,6 +462,7 @@ func (b *ecsAPIService) ensureLoadBalancer(r *awsResources, project *types.Proje
 			})
 	}
 
+	// TODO NITZ this is missing secgroups
 	template.Resources["LoadBalancer"] = &elasticloadbalancingv2.LoadBalancer{
 		Scheme:                 elbv2.LoadBalancerSchemeEnumInternetFacing,
 		SecurityGroups:         securityGroups,
@@ -482,10 +479,20 @@ func (b *ecsAPIService) ensureLoadBalancer(r *awsResources, project *types.Proje
 }
 
 func (r *awsResources) getLoadBalancerSecurityGroups(project *types.Project) []string {
-	securityGroups := []string{}
-	for name, network := range project.Networks {
-		if !network.Internal {
-			securityGroups = append(securityGroups, r.securityGroups[name])
+        securityGroups:=[]string{}
+
+        // TODO NITZ instead, we want to allow traffic from the ingress to the network one
+        // Collect networks SGs. Needed for LB->Service
+        for name, network := range project.Networks {
+          if !network.Internal {
+            securityGroups = append(securityGroups, r.securityGroups[name])
+          }
+        }
+
+        // Collect ingress SGs. Needed for Outside->LB
+	for _, service := range project.Services {
+		if len(service.Ports) > 0 {
+			securityGroups = append(securityGroups, r.securityGroups[serviceIngressSecGroupName(service.Name)])
 		}
 	}
 	return securityGroups
