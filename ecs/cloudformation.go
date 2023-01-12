@@ -199,8 +199,13 @@ func (b *ecsAPIService) createService(project *types.Project, service types.Serv
 	)
 
 	for _, port := range service.Ports {
-		securityGroupName := serviceIngressSecGroupName(service.Name)
-		b.createIngress(service, securityGroupName, port, template, resources)
+		ingressSecurityGroupName := serviceIngressSecGroupName(service.Name)
+                // outside to ingress
+		b.createIngress(service, ingressSecurityGroupName, port, template, resources)
+                // ingress to every network
+                for net := range service.Networks {
+                  b.createCrossGroupIngress(service, ingressSecurityGroupName, net ,port, template, resources)
+                }
 		protocol := strings.ToUpper(port.Protocol)
 		if resources.loadBalancerType == elbv2.LoadBalancerTypeEnumApplication {
 			// we don't set Https as a certificate must be specified for HTTPS listeners
@@ -286,6 +291,22 @@ func (b *ecsAPIService) createIngress(service types.ServiceConfig, net string, p
 		CidrIp:      "0.0.0.0/0",
 		Description: fmt.Sprintf("%s:%d/%s on %s network", service.Name, port.Target, port.Protocol, net),
 		GroupId:     resources.securityGroups[net],
+		FromPort:    int(port.Target),
+		IpProtocol:  protocol,
+		ToPort:      int(port.Target),
+	}
+}
+
+func (b *ecsAPIService) createCrossGroupIngress(service types.ServiceConfig, source string, dest string, port types.ServicePortConfig, template *cloudformation.Template, resources awsResources) {
+	protocol := strings.ToUpper(port.Protocol)
+	if protocol == "" {
+		protocol = allProtocols
+	}
+	ingress := fmt.Sprintf("%s%d%sIngress", normalizeResourceName(source), port.Target, normalizeResourceName(dest))
+	template.Resources[ingress] = &ec2.SecurityGroupIngress{
+                SourceSecurityGroupId: resources.securityGroups[source],
+		Description: fmt.Sprintf("LB connectivity on %d", port.Target),
+		GroupId:     resources.securityGroups[dest],
 		FromPort:    int(port.Target),
 		IpProtocol:  protocol,
 		ToPort:      int(port.Target),

@@ -101,6 +101,17 @@ Resources:
         Value: entrance
       VpcId: vpc-123
     Type: AWS::EC2::SecurityGroup
+  EntranceServiceIngressSecurityGroup80DefaultIngress:
+    Properties:
+      Description: LB connectivity on 80
+      FromPort: 80
+      GroupId:
+        Ref: DefaultNetwork
+      IpProtocol: TCP
+      SourceSecurityGroupId:
+        Ref: EntranceServiceIngressSecurityGroup
+      ToPort: 80
+    Type: AWS::EC2::SecurityGroupIngress
   EntranceServiceIngressSecurityGroup80Ingress:
     Properties:
       CidrIp: 0.0.0.0/0
@@ -203,7 +214,6 @@ Resources:
     Properties:
       Scheme: internet-facing
       SecurityGroups:
-      - Ref: DefaultNetwork
       - Ref: EntranceServiceIngressSecurityGroup
       Subnets:
       - subnet1
